@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stuart Letters</title>
+  <meta name="description" content="A research interface to the Stuart State Papers correspondence — search abstracts, follow people, places, ships, and archival series. Runs entirely in your browser.">
+  <link rel="stylesheet" href="static/css/fonts.css">
+  <link rel="stylesheet" href="static/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="static/css/app.css">
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="brand">
+        <a href="#/">
+          <div class="brand-title"><span class="rubric-drop">S</span>tuart Letters</div>
+          <div class="brand-sub">State Papers correspondence</div>
+        </a>
+      </div>
+      <div class="omni">
+        <span class="mag" aria-hidden="true">⌕</span>
+        <input id="omni-input" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search people, places, ships…" aria-label="Quick search">
+        <div id="omni-drop" class="omni-drop" style="display:none"></div>
+      </div>
+      <nav class="mainnav">
+        <a href="#/search" data-nav="search">Search</a>
+        <a href="#/browse" data-nav="browse">Browse</a>
+        <a href="#/map" data-nav="map">Places</a>
+        <a href="#/ships" data-nav="ships">Ships</a>
+        <a href="#/about" data-nav="about">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="app">
+    <div class="loading">Loading</div>
+  </main>
+
+  <script src="static/js/gate-config.js"></script>
+  <script src="static/js/gate.js"></script>
+  <script src="static/vendor/leaflet/leaflet.js"></script>
+  <script src="static/js/util.js"></script>
+  <script src="static/js/charts.js"></script>
+  <script src="static/js/map.js"></script>
+  <script src="static/js/dbclient.js"></script>
+  <script src="static/js/views.js"></script>
+  <script src="static/js/app.js"></script>
+</body>
+</html>
