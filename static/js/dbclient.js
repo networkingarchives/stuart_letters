@@ -395,7 +395,9 @@
   // --- install the /api shim over SP.api ------------------------------------
   const rawApi = SP.api;
   SP.api = async function (path) {
-    if (!path.startsWith("/api/")) return rawApi(path);
+    // Static files: resolve against the deployment base (e.g. /<repo>/) so they
+    // work on a GitHub Pages project subpath, not just at the site root.
+    if (!path.startsWith("/api/")) return rawApi(abs(path.replace(/^\//, "")));
     const u = new URL(path, location.origin);
     const p = u.pathname;
     let m;
