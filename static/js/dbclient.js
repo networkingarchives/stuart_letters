@@ -89,7 +89,7 @@
 
   const q = async (sql, params = []) => {
     if (!_db) await SP._dbReady;
-    return _db.query(sql, ...params);
+    return _db.query(sql, params);
   };
   const one = async (sql, params = []) => { const r = await q(sql, params); return r[0] || null; };
   const inList = (arr) => arr.map(() => "?").join(",");
