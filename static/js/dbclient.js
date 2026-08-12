@@ -193,29 +193,40 @@
   }
 
   // --- endpoint: search -----------------------------------------------------
+  // A filtered/text search's facets each re-run the full (network-backed) FTS
+  // match from scratch — 5-6 separate full scans, on top of the count and the
+  // results page. Re-using one materialized match set across them would be
+  // faster but isn't safe here (see git history — it hit a real bug in the
+  // vendored sql.js-httpvfs worker's chunk loader under concurrent
+  // read/write). Instead, facets=only lets the frontend fetch the letters
+  // first (one scan) and load facets separately afterwards, so results appear
+  // without waiting on all of them.
   async function apiSearch(qs) {
     const { joins, wsql, params, match, relevance } = buildQuery(qs);
     const base = `FROM letter l ${joins} ${wsql}`;
-    const total = (await one(`SELECT COUNT(DISTINCT l.id) c ${base}`, params)).c;
+    const wantResults = g1(qs, "facets") !== "only";
 
-    const sort = g1(qs, "sort") || (match ? "relevance" : "date");
-    let order;
-    if (sort === "relevance" && relevance) order = "ORDER BY rank";
-    else if (sort === "date_desc") order = "ORDER BY l.year DESC, l.date_start DESC";
-    else order = "ORDER BY (l.year IS NULL), l.year, l.date_start";
+    const out = {};
+    if (wantResults) {
+      out.total = (await one(`SELECT COUNT(DISTINCT l.id) c ${base}`, params)).c;
 
-    const limit = Math.min(+(g1(qs, "limit") || 50), 500);
-    const offset = +(g1(qs, "offset") || 0);
-    const snip = match ? "snippet(letters_fts,0,'<mark>','</mark>','…',12)" : "NULL";
-    const rows = await q(
-      `SELECT l.id, l.letter_id, l.date_display, l.date_certainty, l.year,
-              l.place_key, l.ship_code, l.has_abstract, l.series_l1, l.series_l2,
-              ${snip} AS snip
-       ${base} ${order} LIMIT ? OFFSET ?`, [...params, limit, offset]);
-    const results = await enrichRows(rows);
+      const sort = g1(qs, "sort") || (match ? "relevance" : "date");
+      let order;
+      if (sort === "relevance" && relevance) order = "ORDER BY rank";
+      else if (sort === "date_desc") order = "ORDER BY l.year DESC, l.date_start DESC";
+      else order = "ORDER BY (l.year IS NULL), l.year, l.date_start";
 
-    const out = { total, offset, limit, results };
-    if (g1(qs, "facets") === "1") {
+      out.limit = Math.min(+(g1(qs, "limit") || 50), 500);
+      out.offset = +(g1(qs, "offset") || 0);
+      const snip = match ? "snippet(letters_fts,0,'<mark>','</mark>','…',12)" : "NULL";
+      const rows = await q(
+        `SELECT l.id, l.letter_id, l.date_display, l.date_certainty, l.year,
+                l.place_key, l.ship_code, l.has_abstract, l.series_l1, l.series_l2,
+                ${snip} AS snip
+         ${base} ${order} LIMIT ? OFFSET ?`, [...params, out.limit, out.offset]);
+      out.results = await enrichRows(rows);
+    }
+    if (g1(qs, "facets") === "1" || g1(qs, "facets") === "only") {
       out.facets = hasFilters(qs)
         ? await computeFacets(joins, wsql, params)
         : await SP.api("/static/data/facets-global.json");

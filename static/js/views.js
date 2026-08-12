@@ -114,27 +114,35 @@
   // =========================================================================
   // SEARCH
   // =========================================================================
+  // Facets (author/recipient/place/series/class/date lists in the rail) are
+  // the slow part of a filtered search — each is its own full re-scan of the
+  // match set over the network. Letters are fetched and shown first, on their
+  // own; facets are fetched right after, in the background, and patched into
+  // the rail once ready instead of holding up the results the user is
+  // actually here for. _searchToken guards against a facets response from a
+  // now-superseded search (user changed the query before it arrived) landing
+  // on the wrong page.
+  let _searchToken = 0;
   SP.views.search = async function (params) {
     SP.setNav("search");
+    const token = ++_searchToken;
     const q = params.q || "";
     SP.title(q ? `“${q}”` : "Search");
     loading("Searching");
 
-    const query = { ...params, facets: "1", limit: params.limit || "50", offset: params.offset || "0" };
+    const query = { ...params, facets: "0", limit: params.limit || "50", offset: params.offset || "0" };
     let data;
     try { data = await api("/api/search?" + SP.qs(query)); }
     catch (e) { return mount(el("div.empty", { text: "Search failed: " + e.message })); }
+    if (token !== _searchToken) return;
 
     const wrap = el("div.wrap-search");
     // ---- facet rail ----
     const rail = el("aside.rail");
     rail.append(activeChips(params));
-    rail.append(dateFacet(params, data));
-    rail.append(facetBlock("Author", data.facets.authors, "author", params, (x) => x.n, (x) => x.k, (x) => x.c));
-    rail.append(facetBlock("Recipient", data.facets.recipients, "recipient", params, (x) => x.n, (x) => x.k, (x) => x.c));
-    rail.append(facetBlock("Place of sending", data.facets.places, "place", params, (x) => x.n, (x) => x.k, (x) => x.c));
-    rail.append(facetBlock("Archive division", data.facets.series, "series", params, (x) => x.k, (x) => x.k, (x) => x.n));
-    rail.append(facetBlock("Class", data.facets.source_series, "series2", params, (x) => x.k, (x) => x.k, (x) => x.n));
+    const facetsBox = el("div");
+    facetsBox.append(el("div.facet-loading", { text: "Loading filters…" }));
+    rail.append(facetsBox);
     rail.append(togglesFacet(params));
     wrap.append(rail);
 
@@ -168,6 +176,23 @@
     }
     wrap.append(main);
     mount(wrap);
+
+    // ---- facets, fetched separately so they don't hold up the letters above
+    api("/api/search?" + SP.qs({ ...params, facets: "only" })).then((fdata) => {
+      if (token !== _searchToken) return;   // a newer search superseded this one
+      facetsBox.replaceChildren(
+        dateFacet(params, fdata),
+        facetBlock("Author", fdata.facets.authors, "author", params, (x) => x.n, (x) => x.k, (x) => x.c),
+        facetBlock("Recipient", fdata.facets.recipients, "recipient", params, (x) => x.n, (x) => x.k, (x) => x.c),
+        facetBlock("Place of sending", fdata.facets.places, "place", params, (x) => x.n, (x) => x.k, (x) => x.c),
+        facetBlock("Archive division", fdata.facets.series, "series", params, (x) => x.k, (x) => x.k, (x) => x.n),
+        facetBlock("Class", fdata.facets.source_series, "series2", params, (x) => x.k, (x) => x.k, (x) => x.n),
+      );
+    }).catch((e) => {
+      if (token !== _searchToken) return;
+      console.error(e);
+      facetsBox.replaceChildren(el("div.facet-loading", { text: "Filters unavailable." }));
+    });
   };
 
   function activeChips(params) {
