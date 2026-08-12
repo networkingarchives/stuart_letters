@@ -47,6 +47,7 @@
 
   // --- worker bootstrap -----------------------------------------------------
   let _db = null;
+  SP._dbLoaded = false;   // flips true once the WASM engine + first DB pages are ready
   SP._dbReady = (async function init() {
     await (SP._unlock || Promise.resolve());   // wait for the password gate
 
@@ -84,6 +85,7 @@
     const worker = await window.createDbWorker(DB_CONFIG, WORKER_URL, WASM_URL);
     _db = worker.db;
     SP._worker = worker;
+    SP._dbLoaded = true;
     return _db;
   })().catch((e) => { console.error("DB init failed", e); SP._dbError = e; throw e; });
 

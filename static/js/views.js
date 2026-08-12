@@ -12,7 +12,12 @@
   };
   // register a Leaflet map to be initialised once `el` is in the DOM (after mount)
   const queueMap = (el, points, opts) => { SP._pendingMaps.push({ el, points, opts }); return el; };
-  const loading = (label) => mount(el("div.loading", { text: label || "Loading" }));
+  const loading = (label) => mount(el("div.loading-wrap", {}, [
+    el("div.loading", { text: label || "Loading" }),
+    !SP._dbLoaded && el("div.loading-hint", {
+      text: "First load takes a few seconds — the search engine and database are still downloading."
+    }),
+  ]));
 
   // shared: a ledger result row from an enriched letter
   function entryRow(L) {
@@ -564,7 +569,10 @@
     node.append(el("div.subtitle", { html: `${fmt(places.length)} places with coordinates. ${fmt(stats.no_place)} letters (${Math.round(100 * stats.no_place / stats.letters)}%) record no place and are not shown.` }));
     const m = el("div.map");
     node.append(m);
-    queueMap(m, places.map((p) => ({ k: p.k, n: p.n, lat: p.lat, lon: p.lon, c: p.c })), {});
+    // Most places cluster in Europe; a handful of distant outliers (colonial and
+    // trade destinations) would otherwise drag fitBounds out to a whole-world
+    // view. Start centred on Europe instead — still freely zoomable/pannable.
+    queueMap(m, places.map((p) => ({ k: p.k, n: p.n, lat: p.lat, lon: p.lon, c: p.c })), { initialCenter: [50, 15], initialZoom: 4 });
     node.append(el("p.map-note", { text: "Marker size is proportional to the number of letters sent from a place. Zoom and pan freely; click a marker to open the place." }));
     // top places table
     node.append(el("div.panel-h", { text: "Most-used places", style: { marginTop: "24px" } }));

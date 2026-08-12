@@ -56,7 +56,8 @@
       L.polyline(line, { color: opts.color || SLATE, weight: 1.5, opacity: 0.45, dashArray: "4 4" }).addTo(map);
     }
 
-    if (valid.length === 1) map.setView(latlngs[0], 6);
+    if (opts.initialCenter) map.setView(opts.initialCenter, opts.initialZoom || 4);
+    else if (valid.length === 1) map.setView(latlngs[0], 6);
     else map.fitBounds(L.latLngBounds(latlngs).pad(0.15));
 
     // Leaflet needs a size recalculation once the container is laid out
