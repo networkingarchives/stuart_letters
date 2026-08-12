@@ -241,6 +241,9 @@
     facets.places = await q(
       `SELECT l.place_key k, pl.place_name n, COUNT(*) c ${frm("JOIN place pl ON pl.place_id=l.place_key")}
        GROUP BY l.place_key ORDER BY c DESC LIMIT 10`, params);
+    facets.year_hist = await q(
+      `SELECT l.year year, COUNT(*) n FROM letter l ${joins} ${andWhere("l.year IS NOT NULL")}
+       GROUP BY l.year ORDER BY l.year`, params);
     return facets;
   }
 

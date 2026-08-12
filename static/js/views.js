@@ -197,8 +197,11 @@
     f.append(el("div.facet-h", { html: `<span>Date</span><span class="dim" style="text-transform:none;letter-spacing:0;font-size:10px">drag to filter</span>` }));
     const box = el("div");
     const ymin = +params.year_min || null, ymax = +params.year_max || null;
-    statsCache().then((s) => {
-      const ribbon = SP.charts.yearRibbon(s.year_hist, {
+    // Prefer the histogram scoped to the current results (from computeFacets);
+    // only an unfiltered search falls back to the whole-corpus one from stats.json.
+    const histSource = data.facets && data.facets.year_hist ? Promise.resolve(data.facets.year_hist) : statsCache().then((s) => s.year_hist);
+    histSource.then((hist) => {
+      const ribbon = SP.charts.yearRibbon(hist, {
         selMin: ymin, selMax: ymax,
         onRange: (a, b) => { const np = { ...params }; np.year_min = a; np.year_max = b; np.offset = ""; SP.go("#/search?" + SP.qs(clean(np))); },
       });
